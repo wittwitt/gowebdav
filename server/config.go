@@ -18,5 +18,8 @@ type Config struct {
 	Listen string
 	Prefix string
 
+	StlCrt string //https
+	StlKey string
+
 	Users []*User
 }

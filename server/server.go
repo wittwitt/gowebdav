@@ -78,9 +78,16 @@ func (svr *Server) Run() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(svr.Cfg.Prefix+"/", svr.HandleFunc)
 
-	err := http.ListenAndServe(svr.Cfg.Listen, mux)
-	if err != nil {
-		log.Println("runHTTP ListenAndServe err:", err)
+	if svr.Cfg.StlCrt != "" {
+		err := http.ListenAndServeTLS(svr.Cfg.Listen, svr.Cfg.StlCrt, svr.Cfg.StlKey, mux)
+		if err != nil {
+			log.Println("runHTTPs ListenAndServe err:", err)
+		}
+	} else {
+		err := http.ListenAndServe(svr.Cfg.Listen, mux)
+		if err != nil {
+			log.Println("runHTTP ListenAndServe err:", err)
+		}
 	}
 }
 
