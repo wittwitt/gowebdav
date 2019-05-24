@@ -1,0 +1,16 @@
+listen = "0.0.0.0:5080"
+prefix="" 
+
+[[users]]
+  uid = "gdav"
+  pwd = "123456"
+  root = "../../"
+  hides = [ 
+    "/*.git/",
+    "/down/"
+  ]
+
+[[users]]
+  uid = "test"
+  pwd = "123456"
+  root = "/root/test/"
