@@ -5,3 +5,5 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.1.3
 )
+
+go 1.13

@@ -94,7 +94,7 @@ func (svr *Server) Run() {
 //HandleFunc handle req
 //https://www.x.com/Prefix/path/a/b/c
 func (svr *Server) HandleFunc(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.RequestURI)
+	//log.Println(r.RequestURI)
 
 	// auth user
 	user := svr.BasicAuth(w, r)
@@ -110,7 +110,7 @@ func (svr *Server) HandleFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("......")
+	// log.Println("......")
 	user.WebDav.ServeHTTP(w, r)
 
 	//webDavHandler.ServeHTTP(w, r)
@@ -125,7 +125,7 @@ func (svr *Server) BasicAuth(w http.ResponseWriter, r *http.Request) *User {
 		return svr.Users[loginUID]
 	}
 
-	log.Println("not loin")
+	//log.Println("not loin")
 
 	uid, pwd, baseAuthOk := r.BasicAuth()
 	if !baseAuthOk {
@@ -133,7 +133,7 @@ func (svr *Server) BasicAuth(w http.ResponseWriter, r *http.Request) *User {
 		w.WriteHeader(http.StatusUnauthorized)
 		return nil
 	}
-	log.Println("BasicAuth ok", uid, pwd)
+	//log.Println("BasicAuth ok", uid, pwd)
 
 	var loginUser *User
 
@@ -155,7 +155,7 @@ func (svr *Server) BasicAuth(w http.ResponseWriter, r *http.Request) *User {
 		return nil
 	}
 
-	log.Println("checkUserOk ok", uid, pwd)
+	//log.Println("checkUserOk ok", uid, pwd)
 
 	return loginUser
 }

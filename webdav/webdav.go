@@ -59,6 +59,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if h.LockSystem == nil {
 		status, err = http.StatusInternalServerError, errNoLockSystem
 	} else {
+
+		//fmt.Println("method", r.URL.String(), r.Method)
+
 		switch r.Method {
 		case "OPTIONS":
 			status, err = h.handleOptions(w, r)
@@ -580,12 +583,13 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		// 	}
 		// }
 		for _, hide := range h.Hides {
-			fmt.Println("xx", reqPath)
+
 			matchOk, matchErr := filepath.Match(hide, href)
 			if matchErr != nil {
 				return nil
 			}
 			if matchOk {
+				//fmt.Println("hide file", reqPath)
 				return nil
 			}
 		}
@@ -639,7 +643,7 @@ func (h *Handler) handleProppatch(w http.ResponseWriter, r *http.Request) (statu
 	// 	}
 	// }
 	for _, hide := range h.Hides {
-		fmt.Println("cc", reqPath)
+		//fmt.Println("cc", reqPath)
 		matchOk, matchErr := filepath.Match(hide, r.URL.Path)
 		if matchErr != nil {
 			return 0, nil
@@ -662,7 +666,7 @@ func (h *Handler) handleProppatch(w http.ResponseWriter, r *http.Request) (statu
 
 func makePropstatResponse(href string, pstats []Propstat) *response {
 
-	fmt.Println("href", href)
+	//fmt.Println("href", href)
 
 	resp := response{
 		Href:     []string{(&url.URL{Path: href}).EscapedPath()},

@@ -40,7 +40,7 @@ func (user *User) Init() error {
 	//todo
 	//isDir
 
-	log.Println(user.UID, "root", user.Root)
+	//log.Println(user.UID, "root", user.Root)
 
 	return nil
 }
@@ -49,7 +49,7 @@ func (user *User) Init() error {
 // bool,is limit for path
 func (user *User) HandleLimits(w http.ResponseWriter, r *http.Request) (isLimit bool, err error) {
 	//
-	log.Println(r.RequestURI, r.Method)
+	//log.Println(r.RequestURI, r.Method)
 
 	// find prefix,,user power path
 	// for path, power := range user.Powers {

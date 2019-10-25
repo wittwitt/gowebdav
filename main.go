@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/5dao/gdav/server"
 )
@@ -22,7 +21,7 @@ func main() {
 		panic(err)
 	}
 
-	log.Println(svr)
+	//log.Println(svr)
 	go svr.Start()
 
 	ch := make(chan int)
