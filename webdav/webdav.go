@@ -60,7 +60,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status, err = http.StatusInternalServerError, errNoLockSystem
 	} else {
 
-		//fmt.Println("method", r.URL.String(), r.Method)
+		// fmt.Println("method", r.URL.String(), r.Method)
 
 		switch r.Method {
 		case "OPTIONS":

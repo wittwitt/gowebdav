@@ -16,10 +16,13 @@ func LoadConfig(path string) (*Config, error) {
 //Config config
 type Config struct {
 	Listen string
-	Prefix string
+	// Prefix string
 
 	StlCrt string //https
 	StlKey string
 
 	Users []*User
+
+	WebDavPrefix string //webdav www.x.com/webdav/
+	ToolsPrefix  string //tools www.x.com/tools/
 }

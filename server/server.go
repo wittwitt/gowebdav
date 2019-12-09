@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/5dao/gdav/webdav"
 )
@@ -29,6 +30,8 @@ func NewServer(cfg *Config) (svr *Server, err error) {
 		Cfg:         cfg,
 		Users:       make(map[string]*User),
 		DavHandlers: make(map[string]*webdav.Handler),
+
+		Router: httprouter.New(),
 	}
 
 	//init user
@@ -39,7 +42,7 @@ func NewServer(cfg *Config) (svr *Server, err error) {
 		svr.Users[user.UID] = user
 		if _, ok := svr.DavHandlers[user.Root]; !ok {
 			svr.DavHandlers[user.Root] = &webdav.Handler{
-				Prefix:     cfg.Prefix + "/",
+				Prefix:     "/" + cfg.WebDavPrefix,
 				FileSystem: webdav.Dir(user.Root),
 				LockSystem: webdav.NewMemLS(),
 				Hides:      user.Hides,
@@ -50,6 +53,8 @@ func NewServer(cfg *Config) (svr *Server, err error) {
 		//user.WebDav.MakeHides(user.Hides)
 	}
 
+	svr.RegRouter()
+
 	return
 }
 
@@ -59,6 +64,8 @@ type Server struct {
 
 	Users       map[string]*User
 	DavHandlers map[string]*webdav.Handler
+
+	Router *httprouter.Router
 }
 
 //Start start
@@ -75,20 +82,34 @@ func (svr *Server) Run() {
 		go svr.Run()
 	}()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(svr.Cfg.Prefix+"/", svr.HandleFunc)
-
 	if svr.Cfg.StlCrt != "" {
-		err := http.ListenAndServeTLS(svr.Cfg.Listen, svr.Cfg.StlCrt, svr.Cfg.StlKey, mux)
+		err := http.ListenAndServeTLS(svr.Cfg.Listen, svr.Cfg.StlCrt, svr.Cfg.StlKey, svr.Router)
 		if err != nil {
 			log.Println("runHTTPs ListenAndServe err:", err)
 		}
 	} else {
-		err := http.ListenAndServe(svr.Cfg.Listen, mux)
+		err := http.ListenAndServe(svr.Cfg.Listen, svr.Router)
 		if err != nil {
 			log.Println("runHTTP ListenAndServe err:", err)
 		}
 	}
+}
+
+//
+func (svr *Server) RegRouter() {
+
+	webDavPrefix := "/" + svr.Cfg.WebDavPrefix + "/*filepath"
+	toolsPrefix := "/" + svr.Cfg.ToolsPrefix
+
+	AddToolsRouter(toolsPrefix, svr.Router)
+
+	// WebDAV
+	for _, method := range WebDAVMethods {
+		svr.Router.HandlerFunc(method, webDavPrefix, svr.HandleFunc)
+	}
+
+	svr.Router.NotFound = http.HandlerFunc(NotFound)
+
 }
 
 //HandleFunc handle req
@@ -110,10 +131,7 @@ func (svr *Server) HandleFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// log.Println("......")
 	user.WebDav.ServeHTTP(w, r)
-
-	//webDavHandler.ServeHTTP(w, r)
 }
 
 //BasicAuth auth uid login
@@ -158,4 +176,12 @@ func (svr *Server) BasicAuth(w http.ResponseWriter, r *http.Request) *User {
 	//log.Println("checkUserOk ok", uid, pwd)
 
 	return loginUser
+}
+
+// NotFound 404 action
+func NotFound(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound) // StatusNotFound = 404
+	w.Write([]byte("My own Not Found handler." + r.URL.String()))
+	w.Write([]byte(" The page you requested could not be found."))
 }
