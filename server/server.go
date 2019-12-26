@@ -41,11 +41,17 @@ func NewServer(cfg *Config) (svr *Server, err error) {
 		}
 		svr.Users[user.UID] = user
 		if _, ok := svr.DavHandlers[user.Root]; !ok {
+
+			userHides := []string{}
+			for _, hidePath := range user.Hides {
+				userHides = append(userHides, "/"+cfg.WebDavPrefix+"/"+hidePath)
+			}
+
 			svr.DavHandlers[user.Root] = &webdav.Handler{
 				Prefix:     "/" + cfg.WebDavPrefix,
 				FileSystem: webdav.Dir(user.Root),
 				LockSystem: webdav.NewMemLS(),
-				Hides:      user.Hides,
+				Hides:      userHides, // user.Hides,
 			}
 		}
 		user.WebDav = svr.DavHandlers[user.Root]

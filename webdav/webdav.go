@@ -577,21 +577,21 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			href += "/"
 		}
 
-		// for _, hideG := range h.HidesG {
-		// 	if hideG.Match(reqPath) {
-		// 		return nil
-		// 	}
-		// }
 		for _, hide := range h.Hides {
+			if strings.Index(href, hide) == 0 {
+				return nil
+			}
 
-			matchOk, matchErr := filepath.Match(hide, href)
-			if matchErr != nil {
-				return nil
-			}
-			if matchOk {
-				//fmt.Println("hide file", reqPath)
-				return nil
-			}
+			// fmt.Println(href, hide)
+
+			// matchOk, matchErr := filepath.Match(hide, href)
+			// if matchErr != nil {
+			// 	return nil
+			// }
+			// if matchOk {
+			// 	//fmt.Println("hide file", reqPath)
+			// 	return nil
+			// }
 		}
 
 		return mw.write(makePropstatResponse(href, pstats))

@@ -3,3 +3,7 @@ gdav*
 
 
 go.sum
+
+
+#bin
+gdav_*
