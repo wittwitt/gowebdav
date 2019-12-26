@@ -12,8 +12,9 @@ stlkey = ""
   pwd = "123456"
   root = "../../"
   hides = [ 
-    "/*.git/",
-    "/down/"
+    "oneproject/.git/",
+    "down/",
+    "cc/a.txt",
   ]
 
 [[users]]

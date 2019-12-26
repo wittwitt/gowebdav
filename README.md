@@ -14,20 +14,17 @@ user power limit
 
 # hide syntax
 
-https://golang.org/pkg/path/filepath/#Glob
 
-```sh
+only support path prefix
 
-'*'         matches any sequence of non-Separator characters
-	'?'         matches any single non-Separator character
-	'[' [ '^' ] { character-range } ']'
-	            character class (must be non-empty)
-	c           matches character c (c != '*', '?', '\\', '[')
-	'\\' c      matches character c
-
-character-range:
-	c           matches character c (c != '\\', '-', ']')
-	'\\' c      matches character c
-	lo '-' hi   matches character c for lo <= c <= hi
-
+```conf
+hides = [ 
+	"oneproject/.git/",
+	"down/",
+	"cc/a.txt",
+]
 ```
+> only math ${root}/cc/a.txt
+> no math ${root}/cc/a.txt/../..
+> math ${root}/down/../..
+> math ${root}/oneproject/.git/../..
