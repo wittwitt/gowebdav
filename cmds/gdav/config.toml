@@ -1,0 +1,26 @@
+PassSalt = "vT506vZhL3GJ9bV7mjTh"
+
+listen = "0.0.0.0:5080"
+prefix="webdav" # http://your-domain/{prefix}
+
+stlcrt = "" # path to https crt file
+stlkey = "" # path to https key file
+
+RootPath = "" # default ~/.gdav
+
+[users.gdav]
+  pwd = "jB8JhTL++a3dLytvzoQdKmpQWtggW8BeuiD7QXMPVJ8="
+  root = "user/gdav"
+  hides = [ 
+    "oneproject/.git/",
+    "down/",
+    "cc/a.txt",
+  ]
+
+[users.test]
+  pwd = "E0V/+t+Gts3BGaLOk4VmZUsCJ0HR4zgmOpUHIM6VcX4="
+  root = "test"
+
+[users.test2]
+  pwd = "E0V/+t+Gts3BGaLOk4VmZUsCJ0HR4zgmOpUHIM6VcX4="
+  root = "/home/sh/cc"
