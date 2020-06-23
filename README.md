@@ -1,19 +1,18 @@
 # gdav
 
-webdav server by golang !
+The gdav is a webdav server. code by golang.
 
 base on golang.org/x/net/webdav 
 
-# introduce
+## introduce
 
 multi user
 
 user power limit
   
-  hide some file or subfolder
+hide some file or subfolder
 
 # hide syntax
-
 
 only support path prefix
 

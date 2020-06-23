@@ -1,8 +1,13 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/user"
+	"path/filepath"
+	"sync"
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
@@ -11,44 +16,77 @@ import (
 	"github.com/5dao/gdav/webdav"
 )
 
-var instancePath string
-var sessionStore sessions.Store
+//Server gdav server
+type Server struct {
+	Cfg *Config
 
-func init() {
-	var err error
-	instancePath, err = GetInstancePath()
-	if err != nil {
-		log.Panicln("GetInstancePath err", err)
-	}
+	DavHandlers map[string]*webdav.Handler
 
-	sessionStore = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
+	Users *sync.Map //[uid]User
+
+	Router *httprouter.Router
+
+	Sesstions *sessions.FilesystemStore
 }
 
-//NewServer make new webdav server
+//NewServer make gdav server
 func NewServer(cfg *Config) (svr *Server, err error) {
-	svr = &Server{
-		Cfg:         cfg,
-		Users:       make(map[string]*User),
-		DavHandlers: make(map[string]*webdav.Handler),
-
-		Router: httprouter.New(),
+	if cfg.RootPath == "" {
+		usr, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+		}
+		cfg.RootPath = filepath.Join(usr.HomeDir, ".gdav")
+	}
+	cfg.RootPath, err = filepath.Abs(cfg.RootPath)
+	if err != nil {
+		return nil, err
 	}
 
-	//init user
-	for _, user := range cfg.Users {
-		if user.Init() != nil {
-			return
-		}
-		svr.Users[user.UID] = user
-		if _, ok := svr.DavHandlers[user.Root]; !ok {
+	svr = &Server{
+		Cfg: cfg,
 
+		DavHandlers: make(map[string]*webdav.Handler),
+		Users:       new(sync.Map), //,
+
+		Router: httprouter.New(),
+
+		Sesstions: sessions.NewFilesystemStore(cfg.RootPath+"/.sesstions", securecookie.GenerateRandomKey(32)),
+	}
+
+	//make webdav
+	for uid, user := range cfg.Users {
+		user.UID = uid
+
+		// user root
+		if !filepath.IsAbs(user.Root) {
+			user.Root = filepath.Join(cfg.RootPath, user.Root)
+		}
+
+		rootInfo, statErr := os.Stat(user.Root)
+		if os.IsNotExist(statErr) {
+			log.Printf("path not exist: %s", user.Root)
+			err = os.MkdirAll(user.Root, 0770)
+			if err != nil {
+				return nil, err
+			}
+			rootInfo, statErr = os.Stat(user.Root)
+		}
+		if statErr != nil {
+			return nil, fmt.Errorf("%s err: %v", user.Root, statErr)
+		}
+		if !rootInfo.IsDir() {
+			return nil, fmt.Errorf("%s is file not dir", user.Root)
+		}
+
+		if _, ok := svr.DavHandlers[user.Root]; !ok {
 			userHides := []string{}
 			for _, hidePath := range user.Hides {
-				userHides = append(userHides, "/"+cfg.WebDavPrefix+"/"+hidePath)
+				userHides = append(userHides, "/"+cfg.Prefix+"/"+hidePath)
 			}
 
 			svr.DavHandlers[user.Root] = &webdav.Handler{
-				Prefix:     "/" + cfg.WebDavPrefix,
+				Prefix:     "/" + cfg.Prefix,
 				FileSystem: webdav.Dir(user.Root),
 				LockSystem: webdav.NewMemLS(),
 				Hides:      userHides, // user.Hides,
@@ -56,22 +94,12 @@ func NewServer(cfg *Config) (svr *Server, err error) {
 		}
 		user.WebDav = svr.DavHandlers[user.Root]
 
-		//user.WebDav.MakeHides(user.Hides)
+		svr.Users.Store(user.UID, user)
 	}
 
 	svr.RegRouter()
 
 	return
-}
-
-//Server dav server
-type Server struct {
-	Cfg *Config
-
-	Users       map[string]*User
-	DavHandlers map[string]*webdav.Handler
-
-	Router *httprouter.Router
 }
 
 //Start start
@@ -81,12 +109,12 @@ func (svr *Server) Start() {
 
 //Run go run
 func (svr *Server) Run() {
-	defer func() {
-		if rev := recover(); rev != nil {
-			log.Println("Server run recover:", rev)
-		}
-		go svr.Run()
-	}()
+	// defer func() {
+	// 	if rev := recover(); rev != nil {
+	// 		log.Println("Server run recover:", rev)
+	// 	}
+	// 	go svr.Run()
+	// }()
 
 	if svr.Cfg.StlCrt != "" {
 		err := http.ListenAndServeTLS(svr.Cfg.Listen, svr.Cfg.StlCrt, svr.Cfg.StlKey, svr.Router)
@@ -101,13 +129,9 @@ func (svr *Server) Run() {
 	}
 }
 
-//
+// RegRouter RegRouter
 func (svr *Server) RegRouter() {
-
-	webDavPrefix := "/" + svr.Cfg.WebDavPrefix + "/*filepath"
-	toolsPrefix := "/" + svr.Cfg.ToolsPrefix
-
-	AddToolsRouter(toolsPrefix, svr.Router)
+	webDavPrefix := "/" + svr.Cfg.Prefix + "/*filepath"
 
 	// WebDAV
 	for _, method := range WebDAVMethods {
@@ -119,9 +143,8 @@ func (svr *Server) RegRouter() {
 }
 
 //HandleFunc handle req
-//https://www.x.com/Prefix/path/a/b/c
 func (svr *Server) HandleFunc(w http.ResponseWriter, r *http.Request) {
-	//log.Println(r.RequestURI)
+	// log.Println(r.RequestURI)
 
 	// auth user
 	user := svr.BasicAuth(w, r)
@@ -142,44 +165,48 @@ func (svr *Server) HandleFunc(w http.ResponseWriter, r *http.Request) {
 
 //BasicAuth auth uid login
 func (svr *Server) BasicAuth(w http.ResponseWriter, r *http.Request) *User {
-
-	session, _ := sessionStore.Get(r, "gdav")
-	if _, ok := session.Values["uid"]; ok {
-		loginUID := session.Values["uid"].(string)
-		return svr.Users[loginUID]
+	gdavSession, err := svr.Sesstions.Get(r, "gdav")
+	if err != nil {
+		log.Println(err)
+		return nil
 	}
 
-	//log.Println("not loin")
+	if userObj, ok := gdavSession.Values["uid"]; ok {
+		return userObj.(*User)
+	}
 
+	//
 	uid, pwd, baseAuthOk := r.BasicAuth()
 	if !baseAuthOk {
 		w.Header().Set("WWW-Authenticate", `Basic realm=""`)
 		w.WriteHeader(http.StatusUnauthorized)
 		return nil
 	}
-	//log.Println("BasicAuth ok", uid, pwd)
 
 	var loginUser *User
-
-	checkUserOk := false
-	usersLen := len(svr.Cfg.Users)
-	for i := 0; i < usersLen; i++ {
-		//todo
-		//pwd = mad5(pwd+google code)
-		if svr.Cfg.Users[i].UID == uid && svr.Cfg.Users[i].Pwd == pwd {
-			checkUserOk = true
-			loginUser = svr.Cfg.Users[i]
-		}
+	if userObj, ok := svr.Users.Load(uid); ok {
+		loginUser = userObj.(*User)
 	}
-	if !checkUserOk {
-		w.Header().Set("charset", "UTF-8")
-		//firefox realm chinese unintelligible text
-		w.Header().Set("WWW-Authenticate", `Basic realm="UID/PWD Error!"`)
+
+	w.Header().Set("charset", "UTF-8")
+	//firefox realm chinese unintelligible text
+
+	if loginUser == nil {
+		w.Header().Set("WWW-Authenticate", `Basic realm="UID/PWD Error! code=101"`)
 		w.WriteHeader(http.StatusUnauthorized)
 		return nil
 	}
 
-	//log.Println("checkUserOk ok", uid, pwd)
+	if UserPwd(svr.Cfg.PassSalt, uid, pwd) != loginUser.Pwd {
+		w.Header().Set("WWW-Authenticate", `Basic realm="UID/PWD Error! code=102"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		return nil
+	}
+
+	gdavSession.Options.MaxAge = 0
+
+	gdavSession.Values["uid"] = loginUser
+	svr.Sesstions.Save(r, w, gdavSession)
 
 	return loginUser
 }

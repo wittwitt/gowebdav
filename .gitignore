@@ -1,9 +1,6 @@
-gdav*
+# ide
 .vscode
 
 
-go.sum
-
-
 #bin
-gdav_*
+cmds/gdav/gdav*

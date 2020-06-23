@@ -37,3 +37,8 @@ func TestHide(t *testing.T) {
 		}
 	}
 }
+
+func TestPwd(t *testing.T) {
+
+	t.Log(UserPwd("a", "b", "d"))
+}

@@ -1,9 +1,9 @@
 package server
 
 import (
-	"log"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
-	"path/filepath"
 
 	"github.com/5dao/gdav/webdav"
 )
@@ -16,33 +16,6 @@ type User struct {
 	Hides []string // ref .gitingroe
 
 	WebDav *webdav.Handler
-}
-
-//Init init user
-func (user *User) Init() error {
-	if !filepath.IsAbs(user.Root) {
-		newRoot := filepath.Join(instancePath, user.Root)
-		pathExist, err := PathExist(newRoot)
-		if err != nil {
-			log.Println(user.UID, newRoot, "PathExist err:", err)
-			return err
-		}
-		if !pathExist {
-			//todo
-			//make dir
-			log.Println(user.UID, newRoot, "Path not Exist ")
-			return err
-		}
-		user.Root = newRoot
-	}
-	// /path/a/b not /path/a/b/
-	user.Root = filepath.Join(user.Root, "")
-	//todo
-	//isDir
-
-	//log.Println(user.UID, "root", user.Root)
-
-	return nil
 }
 
 //HandleLimits handle limit
@@ -65,4 +38,22 @@ func (user *User) HandleLimits(w http.ResponseWriter, r *http.Request) (isLimit 
 	//2 check Limits path exist and right
 
 	return false, nil
+}
+
+//UserPwd UserPwd
+func UserPwd(salt, uid, pwd string) string {
+	var data []byte
+
+	salt256 := sha256.Sum256([]byte(salt))
+	data = append(data, salt256[:]...)
+
+	uid256 := sha256.Sum256([]byte(salt + uid))
+	data = append(data, uid256[:]...)
+
+	pwd256 := sha256.Sum256([]byte(salt + uid + pwd))
+	data = append(data, pwd256[:]...)
+
+	sum := sha256.Sum256(data)
+
+	return base64.StdEncoding.EncodeToString(sum[:])
 }
